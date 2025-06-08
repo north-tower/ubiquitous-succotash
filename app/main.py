@@ -2,12 +2,12 @@ from typing import Union
 
 from fastapi import FastAPI
 from pydantic import BaseModel
-from routers.file_upload import router as file_upload
-from routers.transactions import router as transactions
-from routers.financial_institutions import router as financial_institutions
-from routers.lifestyle import router as lifestyle
-from routers.utility import router as utility
-from routers.credit_score import router as credit_score
+from app.routers.file_upload import router as file_upload
+from app.routers.transactions import router as transactions
+from app.routers.financial_institutions import router as financial_institutions
+from app.routers.lifestyle import router as lifestyle
+from app.routers.utility import router as utility
+from app.routers.credit_score import router as credit_score
 from fastapi.middleware import cors
 from fastapi.middleware.cors import CORSMiddleware
 
