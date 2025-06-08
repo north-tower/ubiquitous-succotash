@@ -14,13 +14,24 @@ from fastapi.middleware.cors import CORSMiddleware
 
 app = FastAPI()
 
-origins = ["*"]
+# Define allowed origins - replace with your actual frontend URL
+origins = [
+    "http://localhost:3000",  # React default
+    "http://localhost:5173",  # Vite default
+    "http://164.68.115.204",  # Your server IP
+    "http://164.68.115.204:8000",
+    "http://164.68.115.204:3000",
+    "http://164.68.115.204:5173",
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=origins,
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"]
+    allow_methods=["*"],  # Allows all methods
+    allow_headers=["*"],  # Allows all headers
+    expose_headers=["*"],  # Expose all headers
+    max_age=3600,  # Cache preflight requests for 1 hour
 )
 
 app.include_router(file_upload)

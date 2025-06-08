@@ -6,13 +6,26 @@ import tabula
 import pandas as pd
 from .state import shared_state
 from .helpers import get_name_helper
+from fastapi.middleware.cors import CORSMiddleware
 
 router = APIRouter(
     #router tags
     prefix="/file",
     #documentation tags
-    tags=['File Upload']
+    tags=['File Upload'],
+    responses={
+        200: {"description": "Success"},
+        400: {"description": "Bad Request"},
+        401: {"description": "Unauthorized"},
+        404: {"description": "Not Found"},
+        500: {"description": "Internal Server Error"}
+    }
 )
+
+# Add OPTIONS method handler for preflight requests
+@router.options("/uploadfileandclean/")
+async def options_upload_file():
+    return {"message": "OK"}
 
 # convert to a df
 def dict_to_dataframe(data: dict) -> pd.DataFrame:
