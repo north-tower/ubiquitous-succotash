@@ -183,6 +183,9 @@ async def process_pdf(pdf_content: bytes, password: str):
         # Remove rows where 'Transaction_Type' is "Mpesa Charges"
         mpesa_df = mpesa_df.drop(mpesa_df[mpesa_df['Transaction_Type'] == "Mpesa Charges"].index)
         
+        # Convert 'Completion Time' to ISO string for JSON serialization
+        mpesa_df['Completion Time'] = mpesa_df['Completion Time'].dt.strftime('%Y-%m-%dT%H:%M:%S')
+
         print(mpesa_df)
 
         shared_state.mpesa_statement_df = mpesa_df
