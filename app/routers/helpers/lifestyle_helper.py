@@ -230,7 +230,7 @@ def get_gambling_df(data_df: pd.DataFrame) -> pd.DataFrame:
 
     if data_df is None or data_df.empty:
         logging.warning("No data in shared state")
-        return {"error":"Empty get_gambling df"}
+        return None
     
     data_df = drop_unwanted_rows(data_df)
 

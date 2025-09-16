@@ -19,35 +19,48 @@ router = APIRouter(
 #A function to get the betting summary statistics
 @router.get('/betting_summary_stats/')
 def betting_summary_stats():
+    try:
+        data_df = shared_state.mpesa_statement_df
+        
+        if data_df is None or data_df.empty:
+            return {"message": "No transaction data available"}
+        
+        # calculating the metrics
+        gambling_data = lifestyle_helper.get_gambling_df(data_df)
 
-    data_df = shared_state.mpesa_statement_df
-    # calculating the  metrics
-    data_df = lifestyle_helper.get_gambling_df(data_df)
+        # Check if get_gambling_df returned None or empty data
+        if gambling_data is None or gambling_data.empty:
+            return {"message": "No gambling data found"}
+        
+        # Check if required columns exist
+        if 'month_name' not in gambling_data.columns:
+            return {"message": "Missing month_name column in gambling data"}
+        
+        if 'amount' not in gambling_data.columns:
+            return {"message": "Missing amount column in gambling data"}
+        
+        transactions_per_month = gambling_data.groupby('month_name').size()
 
-    data = data_df
+        # Calculate the average number of transactions per month
+        avg_no_transactions_per_month = transactions_per_month.mean()
+        transactions_count = gambling_data.shape[0]
+        transactions_amount = gambling_data["amount"].sum()
+        max_transacted = gambling_data["amount"].max()
+        min_transacted = gambling_data["amount"].min()
+        avg_transacted = gambling_data["amount"].mean()
 
-    if data is None:
-        return {"message": "No gambling data"}
-    
-    transactions_per_month = data.groupby('month_name').size()
-
-    
-    # Calculate the average number of transactions per month
-    avg_no_transactions_per_month = transactions_per_month.mean()
-    transactions_count =  data.shape[0]
-    transactions_amount = data["amount"].sum()
-    max_transacted = data["amount"].max()
-    min_transacted = data["amount"].min()
-    avg_transacted = data["amount"].mean()
-
-    return{
-        "total_transactions": str(transactions_count),
-        "average_transactions_per_month": str(avg_no_transactions_per_month),
-        "total_tranasacted_amount":str(transactions_amount),
-        "highest_transacted_amount":str(max_transacted),
-        "minimum_transacted_amount":str(min_transacted),
-        "average_transacted_amount":str(avg_transacted)
-    }
+        return {
+            "total_transactions": str(transactions_count),
+            "average_transactions_per_month": str(avg_no_transactions_per_month),
+            "total_tranasacted_amount": str(transactions_amount),
+            "highest_transacted_amount": str(max_transacted),
+            "minimum_transacted_amount": str(min_transacted),
+            "average_transacted_amount": str(avg_transacted)
+        }
+        
+    except Exception as e:
+        logging.error(f"Error in betting_summary_stats: {e}")
+        return {"error": str(e)}
 
 
 #A function to get the saving summary statistics
@@ -81,11 +94,11 @@ def savings_analysis():
 @router.get('/shopping_summary_stats/')
 def shopping_summary_analysis():
     try:
-        # Get savings data
+        # Get shopping data
         data = lifestyle_helper.get_supermarket_df()
         
         if data is None or data.empty:
-            return {"message": "No savings transactions found"}
+            return {"message": "No shopping transactions found"}
             
         # Calculate metrics
         transactions_per_month = data.groupby('month_name').size()

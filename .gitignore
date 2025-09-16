@@ -29,7 +29,7 @@ ENV/
 .venv
 env.bak/
 venv.bak/
-
+myenv/
 # IDE - VSCode
 .vscode/*
 !.vscode/settings.json
