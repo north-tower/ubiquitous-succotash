@@ -18,10 +18,13 @@ app = FastAPI()
 origins = [
     "http://localhost:3000",  # React default
     "http://localhost:5173",  # Vite default
+    "http://127.0.0.1:3000",  # Local development
+    "http://127.0.0.1:5173",  # Local development
     "http://164.68.115.204",  # Your server IP
     "http://164.68.115.204:8000",
     "http://164.68.115.204:3000",
     "http://164.68.115.204:5173",
+    "*",  # Allow all origins for testing
 ]
 
 app.add_middleware(

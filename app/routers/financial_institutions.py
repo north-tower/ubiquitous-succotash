@@ -2,6 +2,7 @@ from fastapi import FastAPI, APIRouter, HTTPException
 from typing import Annotated
 import pandas as pd
 from .state import shared_state
+from fastapi.responses import Response
 
 router = APIRouter(
     #router tags
@@ -128,6 +129,19 @@ safaricom_financial_services = {
 @router.get("/")
 def read_root():
     return {"Testing Setup": "Financial Institutions Logic"}
+
+# Add OPTIONS handler for CORS preflight requests
+@router.options("/bank_received_summary_metrics/")
+async def options_bank_received_summary_metrics():
+    return Response(
+        status_code=200,
+        headers={
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
+            "Access-Control-Allow-Headers": "*",
+            "Access-Control-Max-Age": "3600",
+        }
+    )
 
 
 # Identify Banks Customer Transacts to/from
