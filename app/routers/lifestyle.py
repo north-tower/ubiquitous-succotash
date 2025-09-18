@@ -7,6 +7,7 @@ from .state import shared_state
 import numpy as np
 from .helpers import lifestyle_helper
 import logging
+from fastapi.responses import Response
 
 router = APIRouter(
     #router tags
@@ -14,6 +15,43 @@ router = APIRouter(
     #documentation tags
     tags=['Lifestyle Module']
 )
+
+# Add OPTIONS handlers for CORS preflight requests
+@router.options("/betting_summary_stats/")
+async def options_betting_summary_stats():
+    return Response(
+        status_code=200,
+        headers={
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
+            "Access-Control-Allow-Headers": "*",
+            "Access-Control-Max-Age": "3600",
+        }
+    )
+
+@router.options("/saving_summary_stats/")
+async def options_saving_summary_stats():
+    return Response(
+        status_code=200,
+        headers={
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
+            "Access-Control-Allow-Headers": "*",
+            "Access-Control-Max-Age": "3600",
+        }
+    )
+
+@router.options("/shopping_summary_stats/")
+async def options_shopping_summary_stats():
+    return Response(
+        status_code=200,
+        headers={
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
+            "Access-Control-Allow-Headers": "*",
+            "Access-Control-Max-Age": "3600",
+        }
+    )
 
 
 #A function to get the betting summary statistics

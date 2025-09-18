@@ -4,6 +4,7 @@ import pandas as pd
 from .helpers import utility_helper
 from .state import shared_state
 import re
+from fastapi.responses import Response
 
 router = APIRouter(
     #router tags
@@ -11,6 +12,55 @@ router = APIRouter(
     #documentation tags
     tags=['Utility Module']
 )
+
+# Helper function for CORS OPTIONS responses
+def cors_options_response():
+    return Response(
+        status_code=200,
+        headers={
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
+            "Access-Control-Allow-Headers": "*",
+            "Access-Control-Max-Age": "3600",
+        }
+    )
+
+# Add OPTIONS handlers for CORS preflight requests
+@router.options("/data_bills/")
+async def options_data_bills():
+    return cors_options_response()
+
+@router.options("/kplc/")
+async def options_kplc():
+    return cors_options_response()
+
+@router.options("/kplc_metrics/")
+async def options_kplc_metrics():
+    return cors_options_response()
+
+@router.options("/safaricom_wifi/")
+async def options_safaricom_wifi():
+    return cors_options_response()
+
+@router.options("/safaricom_wifi_metrics/")
+async def options_safaricom_wifi_metrics():
+    return cors_options_response()
+
+@router.options("/zuku_wifi/")
+async def options_zuku_wifi():
+    return cors_options_response()
+
+@router.options("/zuku_wifi_metrics/")
+async def options_zuku_wifi_metrics():
+    return cors_options_response()
+
+@router.options("/fuel/")
+async def options_fuel():
+    return cors_options_response()
+
+@router.options("/fuel_metrics/")
+async def options_fuel_metrics():
+    return cors_options_response()
 
 @router.get('/data_bills/')
 def data_bills():

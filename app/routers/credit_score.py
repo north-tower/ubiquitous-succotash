@@ -7,6 +7,7 @@ from .state import shared_state
 import numpy as np
 from .helpers import credit_score_helper
 import logging
+from fastapi.responses import Response
 
 router = APIRouter(
     #router tags
@@ -16,6 +17,19 @@ router = APIRouter(
 )
 
 data = shared_state.mpesa_statement_df
+
+# Add OPTIONS handler for CORS preflight requests
+@router.options("/get_credit_score")
+async def options_get_credit_score():
+    return Response(
+        status_code=200,
+        headers={
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
+            "Access-Control-Allow-Headers": "*",
+            "Access-Control-Max-Age": "3600",
+        }
+    )
 
 @router.get("/get_credit_score")
 def get_credit_score():

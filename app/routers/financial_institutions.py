@@ -130,9 +130,8 @@ safaricom_financial_services = {
 def read_root():
     return {"Testing Setup": "Financial Institutions Logic"}
 
-# Add OPTIONS handler for CORS preflight requests
-@router.options("/bank_received_summary_metrics/")
-async def options_bank_received_summary_metrics():
+# Helper function for CORS OPTIONS responses
+def cors_options_response():
     return Response(
         status_code=200,
         headers={
@@ -142,6 +141,59 @@ async def options_bank_received_summary_metrics():
             "Access-Control-Max-Age": "3600",
         }
     )
+
+# Add OPTIONS handlers for CORS preflight requests
+@router.options("/")
+async def options_root():
+    return cors_options_response()
+
+@router.options("/client_banks/")
+async def options_client_banks():
+    return cors_options_response()
+
+@router.options("/lowest_amount_received_through_bank/")
+async def options_lowest_amount_received_through_bank():
+    return cors_options_response()
+
+@router.options("/bank_received_summary_metrics/")
+async def options_bank_received_summary_metrics():
+    return cors_options_response()
+
+@router.options("/lowest_amount_sent_through_bank/")
+async def options_lowest_amount_sent_through_bank():
+    return cors_options_response()
+
+@router.options("/bank_sent_summary_metrics/")
+async def options_bank_sent_summary_metrics():
+    return cors_options_response()
+
+@router.options("/identify_safaricom_financial_services/")
+async def options_identify_safaricom_financial_services():
+    return cors_options_response()
+
+@router.options("/identify_mshwari_financial_transactions/")
+async def options_identify_mshwari_financial_transactions():
+    return cors_options_response()
+
+@router.options("/mshwari_loan_summary/")
+async def options_mshwari_loan_summary():
+    return cors_options_response()
+
+@router.options("/top_five_received_count/")
+async def options_top_five_received_count():
+    return cors_options_response()
+
+@router.options("/top_five_sent_count/")
+async def options_top_five_sent_count():
+    return cors_options_response()
+
+@router.options("/fuliza_usage/")
+async def options_fuliza_usage():
+    return cors_options_response()
+
+@router.options("/fuliza_loan_summary/")
+async def options_fuliza_loan_summary():
+    return cors_options_response()
 
 
 # Identify Banks Customer Transacts to/from

@@ -4,6 +4,7 @@ import pandas as pd
 from . import file_upload
 from .state import shared_state
 from .helpers import transactions_helper
+from fastapi.responses import Response
 
 router = APIRouter(
     #router tags
@@ -13,6 +14,107 @@ router = APIRouter(
 )
 
 data = shared_state.mpesa_statement_df
+
+# Helper function for CORS OPTIONS responses
+def cors_options_response():
+    return Response(
+        status_code=200,
+        headers={
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
+            "Access-Control-Allow-Headers": "*",
+            "Access-Control-Max-Age": "3600",
+        }
+    )
+
+# Add OPTIONS handlers for CORS preflight requests
+@router.options("/")
+async def options_root():
+    return cors_options_response()
+
+@router.options("/trans_type/")
+async def options_trans_type():
+    return cors_options_response()
+
+@router.options("/total_recieved/")
+async def options_total_recieved():
+    return cors_options_response()
+
+@router.options("/total_withdrawn/")
+async def options_total_withdrawn():
+    return cors_options_response()
+
+@router.options("/total_transacted/")
+async def options_total_transacted():
+    return cors_options_response()
+
+@router.options("/withdrawal_count/")
+async def options_withdrawal_count():
+    return cors_options_response()
+
+@router.options("/deposit_count/")
+async def options_deposit_count():
+    return cors_options_response()
+
+@router.options("/total_transaction_count/")
+async def options_total_transaction_count():
+    return cors_options_response()
+
+@router.options("/top_deposit/")
+async def options_top_deposit():
+    return cors_options_response()
+
+@router.options("/lowest_deposit/")
+async def options_lowest_deposit():
+    return cors_options_response()
+
+@router.options("/top_withdrawal/")
+async def options_top_withdrawal():
+    return cors_options_response()
+
+@router.options("/lowest_withdrawal/")
+async def options_lowest_withdrawal():
+    return cors_options_response()
+
+@router.options("/minimum_amount_transacted/")
+async def options_minimum_amount_transacted():
+    return cors_options_response()
+
+@router.options("/maximum_amount_transacted/")
+async def options_maximum_amount_transacted():
+    return cors_options_response()
+
+@router.options("/top_paybill_transactions/")
+async def options_top_paybill_transactions():
+    return cors_options_response()
+
+@router.options("/top_till_transactions/")
+async def options_top_till_transactions():
+    return cors_options_response()
+
+@router.options("/top_send_money_transactions/")
+async def options_top_send_money_transactions():
+    return cors_options_response()
+
+@router.options("/top_transactions_customer/")
+async def options_top_transactions_customer():
+    return cors_options_response()
+
+@router.options("/top_withdrawals/")
+async def options_top_withdrawals():
+    return cors_options_response()
+
+@router.options("/top_transactions_received/")
+async def options_top_transactions_received():
+    return cors_options_response()
+
+@router.options("/top_transaction_hour/")
+async def options_top_transaction_hour():
+    return cors_options_response()
+
+@router.options("/top_transaction_day/")
+async def options_top_transaction_day():
+    return cors_options_response()
 
 @router.get("/")
 def read_root():
