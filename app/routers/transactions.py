@@ -123,32 +123,42 @@ def read_root():
 # number of transactions per type per amount
 @router.get("/trans_type/")
 def trans_type():
-    data = shared_state.mpesa_statement_df
-    data = transactions_helper.add_total_amount_column(data)
+    try:
+        data = shared_state.mpesa_statement_df
+        
+        if data is None or data.empty:
+            return {"message": "No transaction data available. Please upload a PDF statement first."}
 
-    if data is None or data.empty:
-        return {"message" : "No transaction data available"}
+        data = transactions_helper.add_total_amount_column(data)
 
-    # Group data by 'Transaction_Type', aggregate count and sum of 'Amount'
-    types = data.groupby("Transaction_Type").agg(
-        Count=("Transaction_Type", "count"),  # Count occurrences of each transaction type
-        Total_Amount=("amount", "sum")      # Sum amounts for each transaction type
-    )
-    return types.to_dict(orient='records')
+        # Group data by 'Transaction_Type', aggregate count and sum of 'Amount'
+        types = data.groupby("Transaction_Type").agg(
+            Count=("Transaction_Type", "count"),  # Count occurrences of each transaction type
+            Total_Amount=("amount", "sum")      # Sum amounts for each transaction type
+        )
+        return types.to_dict(orient='records')
+    
+    except Exception as e:
+        print(f"Error in trans_type: {e}")
+        return {"message": "Error processing transaction data", "error": str(e)}
 
 # total amount transacted
 
 # total amount transacted - received
 @router.get("/total_recieved/")
 def total_received():
-    data = shared_state.mpesa_statement_df
+    try:
+        data = shared_state.mpesa_statement_df
 
-    if data is None or data.empty:
-        return {"message" : "No transaction data available"}
+        if data is None or data.empty:
+            return {"message": "No transaction data available. Please upload a PDF statement first."}
+        
+        total = data['Paid In'].sum()
+        return {"total": total}
     
-    total = data['Paid In'].sum()
-
-    return {"total": total}
+    except Exception as e:
+        print(f"Error in total_received: {e}")
+        return {"message": "Error processing transaction data", "error": str(e)}
 
 
 # total amount transacted - withdrawn

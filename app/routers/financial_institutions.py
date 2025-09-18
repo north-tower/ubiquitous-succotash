@@ -199,13 +199,12 @@ async def options_fuliza_loan_summary():
 # Identify Banks Customer Transacts to/from
 @router.get('/client_banks/')
 def identify_banks():
-
-    data = shared_state.mpesa_statement_df
-
-    if data is None:
-        return [], {"message": "No data available"}
-    
     try:
+        data = shared_state.mpesa_statement_df
+
+        if data is None or data.empty:
+            return [], {"message": "No data available. Please upload a PDF statement first."}
+        
         #create a new column 'Bank' initialized with None
         data['Bank'] = None
 
@@ -225,7 +224,7 @@ def identify_banks():
     
     except Exception as e:
         print(f"Error identifying banks: {e}")
-        return { "error":str(e) }
+        return [], {"message": "Error processing bank data", "error": str(e)}
 
 
 # lowest amount received through bank
@@ -464,32 +463,39 @@ def group_bank_mappings(data, mapping):
 # top five received (from bank) count
 @router.get('/top_five_received_count/')
 def top_five_received_count():
+    try:
+        data_df = shared_state.mpesa_statement_df
 
-    data_df = shared_state.mpesa_statement_df
+        if data_df is None or data_df.empty:
+            return {"message": "No data available. Please upload a PDF statement first."}
 
-    df_grouped = group_bank_mappings(data_df, banks_in_kenya_grouped)
+        df_grouped = group_bank_mappings(data_df, banks_in_kenya_grouped)
 
-    if df_grouped is None:
-        return {"message":"No amount received through the bank"}
+        if df_grouped is None:
+            return {"message": "No amount received through the bank"}
+        
+        # filter transactions with Paid In values
+        paid_in_bank_transactions = df_grouped[df_grouped['Paid In'] != 0.0]
+
+        # group by 'Grouped Bank' and count number of transactions
+        bank_transaction_counts = paid_in_bank_transactions.groupby('Grouped_Bank').size()
+
+        # sort the counts in descending order & select top 5
+        top_five_banks = bank_transaction_counts.sort_values(ascending=False).head(5)
+
+        # Convert to dictionary with bank names as keys
+        result = {
+                "top_five_banks": [
+                    {"bank": bank, "count": count} 
+                    for bank, count in top_five_banks.items()
+                ]
+        }
+
+        return result
     
-    # filter transactions with Paid In values
-    paid_in_bank_transactions = df_grouped[df_grouped['Paid In'] != 0.0]
-
-    # group by 'Grouped Bank' and count number of transactions
-    bank_transaction_counts = paid_in_bank_transactions.groupby('Grouped_Bank').size()
-
-    # sort the counts in descending order & select top 5
-    top_five_banks = bank_transaction_counts.sort_values(ascending=False).head(5)
-
-    # Convert to dictionary with bank names as keys
-    result = {
-            "top_five_banks": [
-                {"bank": bank, "count": count} 
-                for bank, count in top_five_banks.items()
-            ]
-    }
-
-    return result
+    except Exception as e:
+        print(f"Error in top_five_received_count: {e}")
+        return {"message": "Error processing bank data", "error": str(e)}
 
 
 # top five sent (from bank) count
