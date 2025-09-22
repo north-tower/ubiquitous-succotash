@@ -275,53 +275,81 @@ def lowest_amount_received_through_bank(data):
 # bank summary metrics for recieved
 @router.get('/bank_received_summary_metrics/')
 def bank_received_summary_metrics():
+    try:
+        _, client_bank_transactions = identify_banks()
 
-    _, client_bank_transactions = identify_banks()
+        # Check if we got valid data
+        if not client_bank_transactions or 'transactions' not in client_bank_transactions:
+            return {"message": "No bank transaction data available. Please upload a PDF statement first."}
 
-    #print(client_bank_transactions)
-    client_bank_transactions = client_bank_transactions['transactions']
-    client_bank_transactions_df = pd.DataFrame(client_bank_transactions)
+        client_bank_transactions = client_bank_transactions['transactions']
+        
+        # Check if transactions list is empty
+        if not client_bank_transactions:
+            return {"message": "No bank transactions found"}
+        
+        client_bank_transactions_df = pd.DataFrame(client_bank_transactions)
 
-    # debugging
-    # print("===============================================")
-    # print(f"{client_bank_transactions_df.columns.tolist()}")
-    # print("===============================================")
+        # Check if DataFrame is empty
+        if client_bank_transactions_df.empty:
+            return {"message": "No transaction data available"}
 
-    total_amount_received = client_bank_transactions_df['Paid In'].sum()
-    highest_amount_received = client_bank_transactions_df['Paid In'].max()
-    lowest_amount_received = lowest_amount_received_through_bank(client_bank_transactions_df)
+        # debugging
+        # print("===============================================")
+        # print(f"{client_bank_transactions_df.columns.tolist()}")
+        # print("===============================================")
 
-    highest_amount_bank = client_bank_transactions_df.loc[client_bank_transactions_df['Paid In'].idxmax(), 'Bank']
-    lowest_amount_bank = client_bank_transactions_df.loc[client_bank_transactions_df['Paid In'].idxmin(), 'Bank']
+        total_amount_received = client_bank_transactions_df['Paid In'].sum()
+        highest_amount_received = client_bank_transactions_df['Paid In'].max()
+        lowest_amount_received = lowest_amount_received_through_bank(client_bank_transactions_df)
 
-    return {
-        "total_amount_received": total_amount_received,
-        "highest_amount_received": highest_amount_received,
-        "lowest_amount_received": lowest_amount_received,
-        "highest_amount_bank": highest_amount_bank,
-        "lowest_amount_bank":  lowest_amount_bank
-    }
+        highest_amount_bank = client_bank_transactions_df.loc[client_bank_transactions_df['Paid In'].idxmax(), 'Bank']
+        lowest_amount_bank = client_bank_transactions_df.loc[client_bank_transactions_df['Paid In'].idxmin(), 'Bank']
+
+        return {
+            "total_amount_received": total_amount_received,
+            "highest_amount_received": highest_amount_received,
+            "lowest_amount_received": lowest_amount_received,
+            "highest_amount_bank": highest_amount_bank,
+            "lowest_amount_bank":  lowest_amount_bank
+        }
+    
+    except Exception as e:
+        print(f"Error in bank_received_summary_metrics: {e}")
+        return {"message": "Error processing bank summary metrics", "error": str(e)}
 
 
 # lowest amount sent through bank
 @router.get('/lowest_amount_sent_through_bank/')
 def lowest_amount_sent_through_bank():
-
-    _, client_bank_transactions = identify_banks()
-    client_bank_transactions = client_bank_transactions['transactions']
-    data_df = pd.DataFrame(client_bank_transactions)
-
-    if data_df is None:
-        return {"message": "No data available"}
-    
     try:
+        _, client_bank_transactions = identify_banks()
+        
+        if not client_bank_transactions or 'transactions' not in client_bank_transactions:
+            return {"message": "No bank transaction data available. Please upload a PDF statement first."}
+        
+        client_bank_transactions = client_bank_transactions['transactions']
+        
+        if not client_bank_transactions:
+            return {"message": "No bank transactions found"}
+        
+        data_df = pd.DataFrame(client_bank_transactions)
+
+        if data_df is None or data_df.empty:
+            return {"message": "No data available"}
+        
         # to prevent getting zero as the result
         sent_df = data_df[data_df['Withdrawn'] != 0.00]
+        
+        if sent_df.empty:
+            return {"message": "No sent amounts found"}
+        
         lowest_sent_amount = sent_df['Withdrawn'].min()
-        return lowest_sent_amount
+        return {"lowest_sent_amount": lowest_sent_amount}
+    
     except Exception as e:
         print(f"Error getting lowest amount sent through bank: {e}")
-        return {"error": str(e)}
+        return {"message": "Error processing bank data", "error": str(e)}
     
 
 def lowest_amount_sent_through_bank(data):
@@ -508,32 +536,39 @@ def top_five_received_count():
 # top five sent (from bank) count
 @router.get('/top_five_sent_count/')
 def top_five_sent_count():
+    try:
+        data_df = shared_state.mpesa_statement_df
 
-    data_df = shared_state.mpesa_statement_df
+        if data_df is None or data_df.empty:
+            return {"message": "No data available. Please upload a PDF statement first."}
 
-    df_grouped = group_bank_mappings(data_df, banks_in_kenya_grouped)
+        df_grouped = group_bank_mappings(data_df, banks_in_kenya_grouped)
 
-    if df_grouped is None:
-        return {"message":"No amount received through the bank"}    
+        if df_grouped is None:
+            return {"message": "No amount received through the bank"}    
+        
+        # filter transactions with Withdrawn values
+        paid_in_bank_transactions = df_grouped[df_grouped['Withdrawn'] != 0.0]
+
+        # group by 'Grouped Bank' and count number of transactions
+        bank_transaction_counts = paid_in_bank_transactions.groupby('Grouped_Bank').size()
+
+        # sort the counts in descending order & select top 5
+        top_five_banks = bank_transaction_counts.sort_values(ascending=False).head(5)
+
+        # Convert to dictionary with bank names as keys
+        result = {
+                "top_five_banks": [
+                    {"bank": bank, "count": count} 
+                    for bank, count in top_five_banks.items()
+                ]
+        }
+
+        return result
     
-    # filter transactions with Paid In values
-    paid_in_bank_transactions = df_grouped[df_grouped['Withdrawn'] != 0.0]
-
-    # group by 'Grouped Bank' and count number of transactions
-    bank_transaction_counts = paid_in_bank_transactions.groupby('Grouped_Bank').size()
-
-    # sort the counts in descending order & select top 5
-    top_five_banks = bank_transaction_counts.sort_values(ascending=False).head(5)
-
-    # Convert to dictionary with bank names as keys
-    result = {
-            "top_five_banks": [
-                {"bank": bank, "count": count} 
-                for bank, count in top_five_banks.items()
-            ]
-    }
-
-    return result
+    except Exception as e:
+        print(f"Error in top_five_sent_count: {e}")
+        return {"message": "Error processing bank data", "error": str(e)}
 
 
 def identify_safaricom_financial_services_2():
