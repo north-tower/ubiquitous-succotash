@@ -230,23 +230,30 @@ def identify_banks():
 # lowest amount received through bank
 @router.get('/lowest_amount_received_through_bank/')
 def lowest_amount_received_through_bank():
-
-    _, client_bank_transactions = identify_banks()
-    client_bank_transactions = client_bank_transactions['transactions']
-    data_df = pd.DataFrame(client_bank_transactions)
-
-    if data_df is None:
-        return {"error":"No data available"}
-    
     try:
+        _, client_bank_transactions = identify_banks()
+        
+        if 'transactions' not in client_bank_transactions or not client_bank_transactions['transactions']:
+            return {"message": "No bank transaction data available"}
+        
+        client_bank_transactions = client_bank_transactions['transactions']
+        data_df = pd.DataFrame(client_bank_transactions)
+
+        if data_df is None or data_df.empty:
+            return {"message": "No data available"}
+        
         # to prevent getting zero as the result
         received_df = data_df[data_df['Paid In'] != 0.00]
+        
+        if received_df.empty:
+            return {"message": "No received amounts found"}
+        
         lowest_received_amount = received_df['Paid In'].min()
         return {"lowest_received_amount": lowest_received_amount}
     
     except Exception as e:
         print(f"Error getting lowest amount: {e}")
-        return { "error": str(e)}
+        return {"message": "Error processing bank data", "error": str(e)}
 
 
 def lowest_amount_received_through_bank(data):
@@ -565,53 +572,79 @@ def identify_safaricom_financial_services_2():
 #How our users are using fuliza 
 @router.get('/fuliza_usage/')
 def fuliza_usage():
-    #returns banks client uses, and all the bank transactions
-    client_saf_transactions = identify_safaricom_financial_services_2()
+    try:
+        #returns banks client uses, and all the bank transactions
+        client_saf_transactions = identify_safaricom_financial_services_2()
 
-    if client_saf_transactions is None:
-        return {"message": "Client does not use Fuliza"}
+        if client_saf_transactions is None:
+            return {"message": "Client does not use Fuliza"}
 
-    data_df = pd.DataFrame(client_saf_transactions['transactions'])
-    fuliza_data = data_df[data_df["Financial_Service"] == 'Fuliza']
+        # Check if transactions key exists and has data
+        if 'transactions' not in client_saf_transactions or not client_saf_transactions['transactions']:
+            return {"message": "No Safaricom financial services data available"}
 
-    if fuliza_data.empty:
-        return {"message": "No Fuliza usage found"}
+        data_df = pd.DataFrame(client_saf_transactions['transactions'])
+        
+        # Check if DataFrame is empty
+        if data_df.empty:
+            return {"message": "No transaction data available"}
+        
+        # Check if Financial_Service column exists
+        if 'Financial_Service' not in data_df.columns:
+            return {"message": "No financial service data available"}
+        
+        fuliza_data = data_df[data_df["Financial_Service"] == 'Fuliza']
+
+        if fuliza_data.empty:
+            return {"message": "No Fuliza usage found"}
+        
+        return {"fuliza_usage": fuliza_data.to_dict(orient='records')}
     
-    return {"fuliza_usage": fuliza_data.to_dict(orient='records')}
+    except Exception as e:
+        print(f"Error in fuliza_usage: {e}")
+        return {"message": "Error processing Fuliza usage data", "error": str(e)}
 
 
 # fuliza loan summary
 @router.get('/fuliza_loan_summary/')
 def fuliza_loan_summary():
-
-    data_df = shared_state.mpesa_statement_df
-    # Identify M-Shwari financial transactions
+    try:
+        data_df = shared_state.mpesa_statement_df
+        
+        if data_df is None or data_df.empty:
+            return {"message": "No transaction data available. Please upload a PDF statement first."}
+        
+        # Identify M-Shwari financial transactions
+        
+        # Filter for loan disbursements and repayments
+        loan_disbursements = data_df[data_df['Transaction_Type'] == 'Fuliza Loan']
+        loan_repayments = data_df[data_df['Transaction_Type'] == 'Fuliza Loan Repayment']
+        
+        # Calculate the required metrics
+        loan_count = len(loan_disbursements)
+        highest_amount_paid = loan_repayments["Withdrawn"].max() if not loan_repayments.empty else 0
+        highest_amount_disbured = loan_disbursements["Paid In"].max() if not loan_disbursements.empty else 0
+        date_of_last_loan_disbursement = loan_disbursements['Completion Time'].max() if not loan_disbursements.empty else None
+        date_of_last_loan_repayment = loan_repayments['Completion Time'].max() if not loan_repayments.empty else None
+        last_amount_borrowed = loan_disbursements.loc[loan_disbursements['Completion Time'].idxmax(), 'Paid In'] if not loan_disbursements.empty else 0
+        last_amount_paid_back = loan_repayments.loc[loan_repayments['Completion Time'].idxmax(), 'Withdrawn'] if not loan_repayments.empty else 0
+        total_disbursed = loan_disbursements["Paid In"].sum() if not loan_disbursements.empty else 0
+        total_paid = loan_repayments["Withdrawn"].sum() if not loan_repayments.empty else 0
+        Total_balance = total_disbursed - total_paid
+        
+        return {
+            "total_loan_count": loan_count,
+            "highest_loan_disbursed": highest_amount_disbured,
+            "highest_loan_paid_back": highest_amount_paid,
+            "date_of_last_loan_disbursement": date_of_last_loan_disbursement,
+            "date_of_last_loan_repayment": date_of_last_loan_repayment,
+            "last_amount_borrowed": last_amount_borrowed,
+            "last_amount_paid_back": last_amount_paid_back,
+            "total_loan_disbursed_amount": total_disbursed,
+            "total_loan_paid_back_amount": total_paid,
+            "total_loan_balance": Total_balance
+        }
     
-    # Filter for loan disbursements and repayments
-    loan_disbursements = data_df[data_df['Transaction_Type'] == 'Fuliza Loan']
-    loan_repayments = data_df[data_df['Transaction_Type'] == 'Fuliza Loan Repayment']
-    
-    # Calculate the required metrics
-    loan_count = len(loan_disbursements)
-    highest_amount_paid= loan_repayments["Withdrawn"].max()
-    highest_amount_disbured = loan_disbursements["Paid In"].max()
-    date_of_last_loan_disbursement = loan_disbursements['Completion Time'].max()
-    date_of_last_loan_repayment = loan_repayments['Completion Time'].max()
-    last_amount_borrowed = loan_disbursements.loc[loan_disbursements['Completion Time'].idxmax(), 'Paid In'] if not loan_disbursements.empty else 0
-    last_amount_paid_back = loan_repayments.loc[loan_repayments['Completion Time'].idxmax(), 'Withdrawn'] 
-    total_disbursed = loan_disbursements["Paid In"].sum()
-    total_paid = loan_repayments["Withdrawn"].sum()
-    Total_balance = total_disbursed - total_paid
-    
-    return {
-        "total_loan_count": loan_count,
-        "highest_loan_disbursed": highest_amount_disbured,
-        "highest_loan_paid_back": highest_amount_paid,
-        "date_of_last_loan_disbursement": date_of_last_loan_disbursement,
-        "date_of_last_loan_repayment": date_of_last_loan_repayment,
-        "last_amount_borrowed": last_amount_borrowed,
-        "last_amount_paid_back": last_amount_paid_back,
-        "total_loan_disbursed_amount": total_disbursed,
-        "total_loan_paid_back_amount": total_paid,
-        "total_loan_balance":Total_balance
-    }
+    except Exception as e:
+        print(f"Error in fuliza_loan_summary: {e}")
+        return {"message": "Error processing Fuliza loan summary", "error": str(e)}
