@@ -1,7 +1,20 @@
-services: 
-    core_api:
-        build: .
-        container_name: "core_api"
-        ports:
-            - "8000:8000"
-        working_dir: /app
+version: '3.8'
+
+services:
+  # Backend Service (FastAPI)
+  backend:
+    build:
+      context: ./app  # Adjust path to your FastAPI code
+      dockerfile: Dockerfile
+    container_name: pesabu-backend
+    ports:
+      - "8000:8000"
+    networks:
+      - pesabu-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
