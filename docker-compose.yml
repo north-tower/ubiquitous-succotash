@@ -2,13 +2,14 @@ version: '3.8'
 
 services:
   # Backend Service (FastAPI)
-  backend:
+  core_api:
     build:
-      context: ./app  # Adjust path to your FastAPI code
+      context: .
       dockerfile: Dockerfile
-    container_name: pesabu-backend
+    container_name: "core_api"
     ports:
       - "8000:8000"
+    working_dir: /app
     networks:
       - pesabu-network
     restart: unless-stopped
@@ -18,3 +19,12 @@ services:
       timeout: 10s
       retries: 3
       start_period: 40s
+    environment:
+      - PYTHONPATH=/app
+
+networks:
+  pesabu-network:
+    driver: bridge
+
+volumes:
+  pesabu_backend_data:
