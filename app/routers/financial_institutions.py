@@ -2,7 +2,7 @@ from fastapi import FastAPI, APIRouter, HTTPException
 from typing import Annotated
 import pandas as pd
 from .state import shared_state
-from fastapi.responses import Response
+from fastapi.responses import Response, JSONResponse
 
 router = APIRouter(
     #router tags
@@ -128,7 +128,14 @@ safaricom_financial_services = {
 
 @router.get("/")
 def read_root():
-    return {"Testing Setup": "Financial Institutions Logic"}
+    return JSONResponse(
+        content={"Testing Setup": "Financial Institutions Logic"},
+        headers={
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Methods": "GET, OPTIONS",
+            "Access-Control-Allow-Headers": "Content-Type",
+        }
+    )
 
 # Helper function for CORS OPTIONS responses
 def cors_options_response():
@@ -139,6 +146,18 @@ def cors_options_response():
             "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
             "Access-Control-Allow-Headers": "*",
             "Access-Control-Max-Age": "3600",
+        }
+    )
+
+# Helper for JSON responses with CORS headers
+def cors_json_response(content, status_code: int = 200):
+    return JSONResponse(
+        content=content,
+        status_code=status_code,
+        headers={
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Methods": "GET, OPTIONS",
+            "Access-Control-Allow-Headers": "Content-Type",
         }
     )
 
@@ -203,7 +222,7 @@ def identify_banks():
         data = shared_state.mpesa_statement_df
 
         if data is None or data.empty:
-            return [], {"message": "No data available. Please upload a PDF statement first."}
+            return cors_json_response([[], {"message": "No data available. Please upload a PDF statement first."}])
         
         #create a new column 'Bank' initialized with None
         data['Bank'] = None
@@ -217,14 +236,17 @@ def identify_banks():
 
         unique_banks = bank_transactions['Bank'].unique().tolist()
 
-        return unique_banks, {
-            "transactions": bank_transactions.to_dict(orient='records'),
-            "count": len(bank_transactions)
-        }
+        return cors_json_response([
+            unique_banks,
+            {
+                "transactions": bank_transactions.to_dict(orient='records'),
+                "count": len(bank_transactions)
+            }
+        ])
     
     except Exception as e:
         print(f"Error identifying banks: {e}")
-        return [], {"message": "Error processing bank data", "error": str(e)}
+        return cors_json_response([[], {"message": "Error processing bank data", "error": str(e)}])
 
 
 # lowest amount received through bank
@@ -234,26 +256,26 @@ def lowest_amount_received_through_bank():
         _, client_bank_transactions = identify_banks()
         
         if 'transactions' not in client_bank_transactions or not client_bank_transactions['transactions']:
-            return {"message": "No bank transaction data available"}
+            return cors_json_response({"message": "No bank transaction data available"})
         
         client_bank_transactions = client_bank_transactions['transactions']
         data_df = pd.DataFrame(client_bank_transactions)
 
         if data_df is None or data_df.empty:
-            return {"message": "No data available"}
+            return cors_json_response({"message": "No data available"})
         
         # to prevent getting zero as the result
         received_df = data_df[data_df['Paid In'] != 0.00]
         
         if received_df.empty:
-            return {"message": "No received amounts found"}
+            return cors_json_response({"message": "No received amounts found"})
         
         lowest_received_amount = received_df['Paid In'].min()
-        return {"lowest_received_amount": lowest_received_amount}
+        return cors_json_response({"lowest_received_amount": lowest_received_amount})
     
     except Exception as e:
         print(f"Error getting lowest amount: {e}")
-        return {"message": "Error processing bank data", "error": str(e)}
+        return cors_json_response({"message": "Error processing bank data", "error": str(e)})
 
 
 def lowest_amount_received_through_bank(data):
@@ -280,19 +302,19 @@ def bank_received_summary_metrics():
 
         # Check if we got valid data
         if not client_bank_transactions or 'transactions' not in client_bank_transactions:
-            return {"message": "No bank transaction data available. Please upload a PDF statement first."}
+            return cors_json_response({"message": "No bank transaction data available. Please upload a PDF statement first."})
 
         client_bank_transactions = client_bank_transactions['transactions']
         
         # Check if transactions list is empty
         if not client_bank_transactions:
-            return {"message": "No bank transactions found"}
+            return cors_json_response({"message": "No bank transactions found"})
         
         client_bank_transactions_df = pd.DataFrame(client_bank_transactions)
 
         # Check if DataFrame is empty
         if client_bank_transactions_df.empty:
-            return {"message": "No transaction data available"}
+            return cors_json_response({"message": "No transaction data available"})
 
         # debugging
         # print("===============================================")
@@ -306,17 +328,17 @@ def bank_received_summary_metrics():
         highest_amount_bank = client_bank_transactions_df.loc[client_bank_transactions_df['Paid In'].idxmax(), 'Bank']
         lowest_amount_bank = client_bank_transactions_df.loc[client_bank_transactions_df['Paid In'].idxmin(), 'Bank']
 
-        return {
+        return cors_json_response({
             "total_amount_received": total_amount_received,
             "highest_amount_received": highest_amount_received,
             "lowest_amount_received": lowest_amount_received,
             "highest_amount_bank": highest_amount_bank,
             "lowest_amount_bank":  lowest_amount_bank
-        }
+        })
     
     except Exception as e:
         print(f"Error in bank_received_summary_metrics: {e}")
-        return {"message": "Error processing bank summary metrics", "error": str(e)}
+        return cors_json_response({"message": "Error processing bank summary metrics", "error": str(e)})
 
 
 # lowest amount sent through bank
@@ -326,30 +348,30 @@ def lowest_amount_sent_through_bank():
         _, client_bank_transactions = identify_banks()
         
         if not client_bank_transactions or 'transactions' not in client_bank_transactions:
-            return {"message": "No bank transaction data available. Please upload a PDF statement first."}
+            return cors_json_response({"message": "No bank transaction data available. Please upload a PDF statement first."})
         
         client_bank_transactions = client_bank_transactions['transactions']
         
         if not client_bank_transactions:
-            return {"message": "No bank transactions found"}
+            return cors_json_response({"message": "No bank transactions found"})
         
         data_df = pd.DataFrame(client_bank_transactions)
 
         if data_df is None or data_df.empty:
-            return {"message": "No data available"}
+            return cors_json_response({"message": "No data available"})
         
         # to prevent getting zero as the result
         sent_df = data_df[data_df['Withdrawn'] != 0.00]
         
         if sent_df.empty:
-            return {"message": "No sent amounts found"}
+            return cors_json_response({"message": "No sent amounts found"})
         
         lowest_sent_amount = sent_df['Withdrawn'].min()
-        return {"lowest_sent_amount": lowest_sent_amount}
+        return cors_json_response({"lowest_sent_amount": lowest_sent_amount})
     
     except Exception as e:
         print(f"Error getting lowest amount sent through bank: {e}")
-        return {"message": "Error processing bank data", "error": str(e)}
+        return cors_json_response({"message": "Error processing bank data", "error": str(e)})
     
 
 def lowest_amount_sent_through_bank(data):
@@ -382,13 +404,13 @@ def bank_sent_summary_metrics():
     highest_amount_bank = client_bank_transactions_df.loc[client_bank_transactions_df['Withdrawn'].idxmax(), 'Bank']
     lowest_amount_bank = client_bank_transactions_df.loc[client_bank_transactions_df['Withdrawn'].idxmin(), 'Bank']
 
-    return {
+    return cors_json_response({
         "total_amount_sent": total_amount_sent,
         "highest_amount_sent": highest_amount_sent,
         "lowest_amount_sent": lowest_amount_sent,
         "highest_amount_bank": highest_amount_bank,
         "lowest_amount_bank":  lowest_amount_bank
-    }
+    })
 
 # Identify Saf Financial Services/Transactions
 @router.get('/identify_safaricom_financial_services/')
@@ -406,7 +428,7 @@ def identify_safaricom_financial_services():
     #filter rows where 'Financial_Service' is not None
     bank_transactions = data_df[data_df['Financial_Service'].notna()]
 
-    return {"transactions": bank_transactions.to_dict(orient='records')}
+    return cors_json_response({"transactions": bank_transactions.to_dict(orient='records')})
 
 
 # M-Shwari
@@ -424,8 +446,8 @@ def identify_mshwari_financial_transactions():
     
     mshwari_transactions = data_df[data_df['Mshwari_Service'].notna()]
 
-    return {"mshwari_transactions": mshwari_transactions.to_dict(orient='records'),
-            "count": len(mshwari_transactions)}
+    return cors_json_response({"mshwari_transactions": mshwari_transactions.to_dict(orient='records'),
+            "count": len(mshwari_transactions)})
 
 
 def identify_mshwari_financial_transactions_2():
@@ -440,7 +462,7 @@ def identify_mshwari_financial_transactions_2():
     
     mshwari_transactions = data_df[data_df['Mshwari_Service'].notna()]
 
-    return {"transactions": mshwari_transactions.to_dict(orient='records')}
+    return cors_json_response({"transactions": mshwari_transactions.to_dict(orient='records')})
 
 
 # mshwari loan summary
@@ -469,7 +491,7 @@ def mshwari_loan_summary():
     total_loan_disbursed_amount = loan_disbursements['Paid In'].sum() if not loan_disbursements.empty else 0
     total_loan_paid_back_amount = loan_repayments['Withdrawn'].sum() if not loan_repayments.empty else 0
     
-    return {
+    return cors_json_response({
         "total_loan_count": total_loan_count,
         "highest_loan_disbursed": highest_loan_disbursed,
         "highest_loan_paid_back": highest_loan_paid_back,
@@ -479,7 +501,7 @@ def mshwari_loan_summary():
         "last_amount_paid_back": last_amount_paid_back,
         "total_loan_disbursed_amount": total_loan_disbursed_amount,
         "total_loan_paid_back_amount": total_loan_paid_back_amount
-    }
+    })
 
 
 def group_bank_mappings(data, mapping):
@@ -502,12 +524,12 @@ def top_five_received_count():
         data_df = shared_state.mpesa_statement_df
 
         if data_df is None or data_df.empty:
-            return {"message": "No data available. Please upload a PDF statement first."}
+            return cors_json_response({"message": "No data available. Please upload a PDF statement first."})
 
         df_grouped = group_bank_mappings(data_df, banks_in_kenya_grouped)
 
         if df_grouped is None:
-            return {"message": "No amount received through the bank"}
+            return cors_json_response({"message": "No amount received through the bank"})
         
         # filter transactions with Paid In values
         paid_in_bank_transactions = df_grouped[df_grouped['Paid In'] != 0.0]
@@ -526,11 +548,11 @@ def top_five_received_count():
                 ]
         }
 
-        return result
+        return cors_json_response(result)
     
     except Exception as e:
         print(f"Error in top_five_received_count: {e}")
-        return {"message": "Error processing bank data", "error": str(e)}
+        return cors_json_response({"message": "Error processing bank data", "error": str(e)})
 
 
 # top five sent (from bank) count
@@ -540,12 +562,12 @@ def top_five_sent_count():
         data_df = shared_state.mpesa_statement_df
 
         if data_df is None or data_df.empty:
-            return {"message": "No data available. Please upload a PDF statement first."}
+            return cors_json_response({"message": "No data available. Please upload a PDF statement first."})
 
         df_grouped = group_bank_mappings(data_df, banks_in_kenya_grouped)
 
         if df_grouped is None:
-            return {"message": "No amount received through the bank"}    
+            return cors_json_response({"message": "No amount received through the bank"})    
         
         # filter transactions with Withdrawn values
         paid_in_bank_transactions = df_grouped[df_grouped['Withdrawn'] != 0.0]
@@ -564,11 +586,11 @@ def top_five_sent_count():
                 ]
         }
 
-        return result
+        return cors_json_response(result)
     
     except Exception as e:
         print(f"Error in top_five_sent_count: {e}")
-        return {"message": "Error processing bank data", "error": str(e)}
+        return cors_json_response({"message": "Error processing bank data", "error": str(e)})
 
 
 def identify_safaricom_financial_services_2():
@@ -594,13 +616,13 @@ def identify_safaricom_financial_services_2():
         services_df = df[df['Financial_Service'].notna()]
         
         # Return with column info
-        return {
+        return cors_json_response({
             "transactions": services_df.to_dict(orient='records'),
             "columns": services_df.columns.tolist()
-        }
+        })
     except Exception as e:
         print(f"Error in identify_safaricom_financial_services_2: {e}")
-        return {"transactions": [], "error": str(e)}
+        return cors_json_response({"transactions": [], "error": str(e)})
 
 
 # fuliza transaction ( How are customers using fuliza)
@@ -612,32 +634,32 @@ def fuliza_usage():
         client_saf_transactions = identify_safaricom_financial_services_2()
 
         if client_saf_transactions is None:
-            return {"message": "Client does not use Fuliza"}
+            return cors_json_response({"message": "Client does not use Fuliza"})
 
         # Check if transactions key exists and has data
         if 'transactions' not in client_saf_transactions or not client_saf_transactions['transactions']:
-            return {"message": "No Safaricom financial services data available"}
+            return cors_json_response({"message": "No Safaricom financial services data available"})
 
         data_df = pd.DataFrame(client_saf_transactions['transactions'])
         
         # Check if DataFrame is empty
         if data_df.empty:
-            return {"message": "No transaction data available"}
+            return cors_json_response({"message": "No transaction data available"})
         
         # Check if Financial_Service column exists
         if 'Financial_Service' not in data_df.columns:
-            return {"message": "No financial service data available"}
+            return cors_json_response({"message": "No financial service data available"})
         
         fuliza_data = data_df[data_df["Financial_Service"] == 'Fuliza']
 
         if fuliza_data.empty:
-            return {"message": "No Fuliza usage found"}
+            return cors_json_response({"message": "No Fuliza usage found"})
         
-        return {"fuliza_usage": fuliza_data.to_dict(orient='records')}
+        return cors_json_response({"fuliza_usage": fuliza_data.to_dict(orient='records')})
     
     except Exception as e:
         print(f"Error in fuliza_usage: {e}")
-        return {"message": "Error processing Fuliza usage data", "error": str(e)}
+        return cors_json_response({"message": "Error processing Fuliza usage data", "error": str(e)})
 
 
 # fuliza loan summary
@@ -647,7 +669,7 @@ def fuliza_loan_summary():
         data_df = shared_state.mpesa_statement_df
         
         if data_df is None or data_df.empty:
-            return {"message": "No transaction data available. Please upload a PDF statement first."}
+            return cors_json_response({"message": "No transaction data available. Please upload a PDF statement first."})
         
         # Identify M-Shwari financial transactions
         
@@ -667,7 +689,7 @@ def fuliza_loan_summary():
         total_paid = loan_repayments["Withdrawn"].sum() if not loan_repayments.empty else 0
         Total_balance = total_disbursed - total_paid
         
-        return {
+        return cors_json_response({
             "total_loan_count": loan_count,
             "highest_loan_disbursed": highest_amount_disbured,
             "highest_loan_paid_back": highest_amount_paid,
@@ -678,8 +700,8 @@ def fuliza_loan_summary():
             "total_loan_disbursed_amount": total_disbursed,
             "total_loan_paid_back_amount": total_paid,
             "total_loan_balance": Total_balance
-        }
+        })
     
     except Exception as e:
         print(f"Error in fuliza_loan_summary: {e}")
-        return {"message": "Error processing Fuliza loan summary", "error": str(e)}
+        return cors_json_response({"message": "Error processing Fuliza loan summary", "error": str(e)})
